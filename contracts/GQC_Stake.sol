@@ -931,11 +931,12 @@ contract GQC_Stake is LPTokenWrapper, IRewardDistributionRecipient, ReentrancyGu
         emit ChangeReward(rewardPerDay, expireAt);
     }
 
-    function getStakeInfo(address account) public view returns (uint available, uint staked, uint reward, uint burned, uint totalBurned) {
+    function getStakeInfo(address account) public view returns (uint available, uint staked, uint reward, uint burned, uint totalBurned, uint rewardToday) {
         available = lpToken.balanceOf(account);
         staked = balanceOf(account);
         reward = earned(account);
         burned = burnOf(account).add(balanceOf(account).sub(afterBurnBalanceOf(account)));
         totalBurned = totalBurn();
+        rewardToday = rewardRate.mul(1 days);
     }
 }
