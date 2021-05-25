@@ -661,12 +661,12 @@ contract LPTokenWrapper is Initializable {
     }
 
     function afterBurnBalanceOf(address account) public view returns (uint256) {
-        if (_balances[account] == 0 || block.timestamp <= _stakeAt[account]) return balanceOf(account);
+        if (_balances[account] == 0) return 0;
 
         uint256 day = block.timestamp.sub(_stakeAt[account]).div(1 days);
         uint256 balance = _balances[account];
-        for (uint256 i = 0; i < day; i ++)
-            balance = balance.mul(99).div(100);
+        for (uint256 i = 0; i < day; i += 20)
+            balance = balance.mul(99 ** Math.min(20, day - i)).div(100 ** Math.min(20, day - i));
 
         return balance;
     }
