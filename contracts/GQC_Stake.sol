@@ -684,7 +684,7 @@ contract LPTokenWrapper is Initializable {
         lpToken.safeTransfer(msg.sender, amount);
     }
 
-    function updateBurned(bool isExit) public {
+    function updateBurned(bool isExit) internal {
         uint balance = balanceOf(msg.sender);
         uint rBalance = afterBurnBalanceOf(msg.sender);
         uint burnAmount = isExit ? balance.sub(rBalance.mul(99).div(100)) : balance.sub(rBalance);
