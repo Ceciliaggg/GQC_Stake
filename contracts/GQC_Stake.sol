@@ -607,7 +607,7 @@ library SafeERC20 {
 abstract contract IRewardDistributionRecipient is Ownable {
     address rewardDistribution;
 
-    function notifyRewardAmount(uint256 rewardPerDay, uint256 expireAt) virtual external;
+    function notifyRewardAmount(uint256 reward) virtual external;
 
     modifier onlyRewardDistribution() {
         require(_msgSender() == rewardDistribution, "Caller is not reward distribution");
@@ -822,7 +822,7 @@ contract GQC_Stake is LPTokenWrapper, IRewardDistributionRecipient, ReentrancyGu
     mapping(address => uint256) public userRewardPerTokenPaid;
     mapping(address => uint256) public rewards;
 
-    event ChangeReward(uint256 reward, uint expireAt);
+    event RewardAdded(uint256 reward);
     event Staked(address indexed user, uint256 amount);
     event Withdrawn(address indexed user);
     event RewardPaid(address indexed user, uint256 reward);
@@ -915,28 +915,34 @@ contract GQC_Stake is LPTokenWrapper, IRewardDistributionRecipient, ReentrancyGu
         starttime = _starttime;
     }
 
-    function notifyRewardAmount(uint256 rewardPerDay, uint256 expireAt)
+    function notifyRewardAmount(uint256 reward)
     virtual
     override
     external
     onlyRewardDistribution
     updateReward(address(0))
     {
-        rewardRate = rewardPerDay.div(1 days);
-        uint256 totalReward = rewardRate.mul(expireAt.sub(block.timestamp));
-        require(totalReward <= rewardToken.balanceOf(address(this)), 'insufficient reward');
+        uint256 leftover = 0;
+        if (block.timestamp < periodFinish) {
+            uint256 remaining = periodFinish.sub(block.timestamp);
+            leftover = remaining.mul(rewardRate);
+        }
+        rewardRate = reward.add(leftover).div(1 days);
+        rewardToken.safeTransferFrom(msg.sender, address(this), reward);
         lastUpdateTime = block.timestamp;
-        periodFinish = expireAt;
+        periodFinish = block.timestamp.add(1 days);
 
-        emit ChangeReward(rewardPerDay, expireAt);
+        emit RewardAdded(reward);
     }
 
-    function getStakeInfo(address account) public view returns (uint available, uint staked, uint reward, uint burned, uint totalBurned, uint rewardToday) {
+    function getStakeInfo(address account) public view returns (uint available, uint staked, uint reward, uint burned, uint totalBurned, uint rewardToday, uint tvl) {
+        uint afterBurnBalance = afterBurnBalanceOf(account);
         available = lpToken.balanceOf(account);
-        staked = balanceOf(account);
+        staked = afterBurnBalance;
         reward = earned(account);
-        burned = burnOf(account).add(balanceOf(account).sub(afterBurnBalanceOf(account)));
+        burned = burnOf(account).add(balanceOf(account).sub(afterBurnBalance));
         totalBurned = totalBurn();
         rewardToday = rewardRate.mul(1 days);
+        tvl = totalSupply();
     }
 }
